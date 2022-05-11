@@ -3,42 +3,25 @@
 #include <BfButton.h>
 #include <BfButtonManager.h>
 #include <RotaryEncoder.h>
-
-// Pin definifitons
-//Written for Arduino Nano as per KiCad schematic
-#define ACL 0
-#define ADA 1
-#define ASW 2
-
-#define BCL 3
-#define BDA 4
-#define BSW 5
-
-#define CCL 6
-#define CDA 7
-#define CSW 8
-
-#define DCL 9
-#define DDA 10
-#define DSW 11
-
-#define LBUTTON A0
-#define RBUTTON A1
-
-#define PLAY A2
-
+#include "ControlSignal.h"
 // Setup a RotaryEncoder with 4 steps per latch for the 2 signal input pins:
 // RotaryEncoder encoderA(A1, A2, RotaryEncoder::LatchMode::FOUR3);
 
-const uint8_t buttonPins[] = {ASW, BSW, CSW, DSW};
+const uint8_t encoderButtonPins[] = {ASW, BSW, CSW, DSW};
+//encoder buttons
 BfButton aSw(BfButton::STANDALONE_DIGITAL, ASW, true, LOW);
 BfButton bSw(BfButton::STANDALONE_DIGITAL, BSW, true, LOW);
 BfButton cSw(BfButton::STANDALONE_DIGITAL, CSW, true, LOW);
 BfButton dSw(BfButton::STANDALONE_DIGITAL, DSW, true, LOW);
 
 BfButton* encoderButtons[] = {&aSw, &bSw, &cSw, &dSw};
+//left/right menu buttons
+BfButton leftSw(BfButton::STANDALONE_DIGITAL, LBUTTON, true, LOW);
+BfButton rightSw(BfButton::STANDALONE_DIGITAL, RBUTTON, true, LOW);
 
-// Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
+//
+
+// Encoders
 RotaryEncoder encoderA(ACL, ADA, RotaryEncoder::LatchMode::FOUR3);
 RotaryEncoder encoderB(BCL, BDA, RotaryEncoder::LatchMode::FOUR3);
 RotaryEncoder encoderC(CCL, CDA, RotaryEncoder::LatchMode::FOUR3);
@@ -93,12 +76,24 @@ void handleD (BfButton* btn, BfButton::press_pattern_t pattern)
 
 // handle button presses generically rather than needing a new handler for each button
 
+void buttonPressed (BfButton* btn, BfButton::press_pattern_t pattern)
+{
+
+}
+
+// send the control signal over I2C
+void sendControlSignal(ControlSignal sig)
+{
+  Wire.beginTransmission(8);
+  Wire.write((uint8_t)sig.asByte());
+  Wire.endTransmission();
+}
+
+
 void setup()
 {
   Serial.begin(9600);
   while (! Serial);
-  Serial.println("SimplePollRotator example for the RotaryEncoder library.");
-
   aSw.onPress(handleA)
     .onDoublePress(handleA)
     .onPressFor(handleA, 1000);
@@ -115,7 +110,8 @@ void setup()
     .onDoublePress(handleD)
     .onPressFor(handleD, 1000);
 
-  Wire.begin();
+ Wire.begin(8);
+ Serial.println("I2C connection established");
  
 } // setup()
 int posA = 0;
