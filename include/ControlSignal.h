@@ -54,14 +54,13 @@ enum ButtonId
     Trk1,
     Trk2,
     Trk3,
-    Trk4
+    Trk4,
+    Play
 };
 const uint8_t allButtonPins[] = {ASW, BSW, CSW, DSW, LBUTTON, RBUTTON, PLAY, TRK1, TRK2, TRK3, TRK4};
 struct ControlSignal
 {
 public:
-    ControlSignal();
-    ControlSignal(byte d);
     bool isButton;
     bool dir;
     uint8_t idx;
@@ -72,7 +71,6 @@ public:
     static uint8_t byteIdx(byte bits);
     static bool bitValue(byte bits, uint8_t idx);
     static void printByte(byte bits);
-
 };
 
 

@@ -1,16 +1,6 @@
 #include "ControlSignal.h"
 
-ControlSignal::ControlSignal() : isButton(true), dir(true), idx(0)
-{
 
-}
-
-ControlSignal::ControlSignal(byte d)
-{
-    idx = byteIdx(d);
-    isButton = bitValue(d, ISBUTTON_BIT);
-    dir = bitValue(d, DIR_BIT);
-}
 uint8_t ControlSignal::byteIdx(byte bits)
 {
     //set the 7th and 8th bit low such that the byte represents only the 8 bit index integer
