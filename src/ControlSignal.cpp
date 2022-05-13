@@ -18,7 +18,7 @@ byte ControlSignal::asByte()
 {
     //start with just the 255 bit IDX
     byte out = idx;
-    //An idx between 0 and 9 only needs four bits, so the leftmost two bits can be used to store the isEncoder and direction variables
+    //An idx between 0 and 10 only needs four bits, so the leftmost two bits can be used to store the isEncoder and direction variables
     if (isButton)
     {
         out = setBit(out, ISBUTTON_BIT, true);

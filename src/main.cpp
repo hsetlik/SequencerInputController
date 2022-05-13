@@ -4,6 +4,14 @@
 #include <BfButtonManager.h>
 #include <RotaryEncoder.h>
 #include "ControlSignal.h"
+//just easier to loop through all buttons
+
+// Encoders
+RotaryEncoder encoderA(ACL, ADA, RotaryEncoder::LatchMode::FOUR3);
+RotaryEncoder encoderB(BCL, BDA, RotaryEncoder::LatchMode::FOUR3);
+RotaryEncoder encoderC(CCL, CDA, RotaryEncoder::LatchMode::FOUR3);
+RotaryEncoder encoderD(DCL, DDA, RotaryEncoder::LatchMode::FOUR3);
+RotaryEncoder encoders[] = {encoderA, encoderB, encoderC, encoderD};
 
 
 //encoder buttons
@@ -26,26 +34,29 @@ BfButton trk4Button(BfButton::STANDALONE_DIGITAL, TRK4, true, LOW);
 BfButton playButton(BfButton::STANDALONE_DIGITAL, PLAY, true, LOW);
 
 //just easier to loop through all buttons
-BfButton* const allButtons[] = {&aSw, &bSw, &cSw, &dSw, &leftSw, &rightSw, &trk1Button, &trk2Button, &trk3Button, &trk4Button, &playButton};
-
-// Encoders
-RotaryEncoder encoderA(ACL, ADA, RotaryEncoder::LatchMode::FOUR3);
-RotaryEncoder encoderB(BCL, BDA, RotaryEncoder::LatchMode::FOUR3);
-RotaryEncoder encoderC(CCL, CDA, RotaryEncoder::LatchMode::FOUR3);
-RotaryEncoder encoderD(DCL, DDA, RotaryEncoder::LatchMode::FOUR3);
-RotaryEncoder encoders[] = {encoderA, encoderB, encoderC, encoderD};
-
+BfButton* allButtons[] = {&aSw, &bSw, &cSw, &dSw, &leftSw, &rightSw, &trk1Button, &trk2Button, &trk3Button, &trk4Button, &playButton};
 //===========BUTTON HANDLING=====================================
 
 uint8_t buttonIndex(BfButton* button)
 {
   uint8_t idx = 0;
-  while(idx > 11)
+  while(idx < 11)
   {
     if (allButtons[idx] == button)
       return idx;
+    ++idx;
   }
   return 0;
+}
+
+// send the control signal over I2C
+void sendControlSignal(ControlSignal sig)
+{
+  Wire.beginTransmission(8);
+  auto b = sig.asByte();
+  ControlSignal::printByte(b);
+  Wire.write((uint8_t)b);
+  Wire.endTransmission();
 }
 
 void buttonPressed (BfButton* btn, BfButton::press_pattern_t pattern)
@@ -58,22 +69,27 @@ void buttonPressed (BfButton* btn, BfButton::press_pattern_t pattern)
   sendControlSignal(sig);
 }
 
-// send the control signal over I2C
-void sendControlSignal(ControlSignal sig)
-{
-  Wire.beginTransmission(8);
-  Wire.write((uint8_t)sig.asByte());
-  Wire.endTransmission();
-}
 
 
 void setup()
 {
+  pinMode(A0, INPUT_PULLUP);
+  pinMode(A1, INPUT_PULLUP);
+  pinMode(A2, INPUT_PULLUP);
+  pinMode(A3, INPUT_PULLUP);
+  pinMode(A6, INPUT_PULLUP);
+  pinMode(A7, INPUT_PULLUP);
+  // encoder buttons
   Serial.begin(9600);
   while (! Serial);
-  
+ 
+ for(uint8_t i; i < 11; ++i)
+ {
+   allButtons[i]->onPress(buttonPressed).onDoublePress(buttonPressed).onPressFor(buttonPressed, 1000);
+ } 
  Wire.begin(8);
  Serial.println("I2C connection established");
+
  
 } // setup()
 
@@ -88,6 +104,10 @@ int* positions[] = {&posA, &posB, &posC, &posD};
 // Read the current position of the encoder and print out when changed.
 void loop()
 {
+  for(uint8_t b = 0; b < 11; ++b)
+  {
+    allButtons[b]->read();
+  }
   for(uint8_t i = 0; i < 4; ++i)
   {
     encoders[i].tick();
@@ -107,10 +127,7 @@ void loop()
       *positions[i] = newPos;
     }
   }
-  for(uint8_t b = 0; b < 11; ++b)
-  {
-    allButtons[b]->read();
-  }
+ 
 } // loop ()
 
 // The End
