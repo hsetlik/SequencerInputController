@@ -4,7 +4,7 @@
 #include <BfButtonManager.h>
 #include <RotaryEncoder.h>
 #include "ControlSignal.h"
-//just easier to loop through all buttons
+#include "AnalogButtonArray.h"
 
 // Encoders
 RotaryEncoder encoderA(ACL, ADA, RotaryEncoder::LatchMode::FOUR3);
@@ -20,22 +20,20 @@ BfButton bSw(BfButton::STANDALONE_DIGITAL, BSW, true, LOW);
 BfButton cSw(BfButton::STANDALONE_DIGITAL, CSW, true, LOW);
 BfButton dSw(BfButton::STANDALONE_DIGITAL, DSW, true, LOW);
 
-//BfButtonManager manager(A7, 7);
-//left/right menu buttons
-//Track select buttons
-BfButton trk1Button(BfButton::ANALOG_BUTTON_ARRAY, 4);
-BfButton trk2Button(BfButton::ANALOG_BUTTON_ARRAY, 5);
-BfButton trk3Button(BfButton::ANALOG_BUTTON_ARRAY, 6);
-BfButton trk4Button(BfButton::ANALOG_BUTTON_ARRAY, 7);
+AnalogButtonArray analogButtons(A7, 7);
 
-BfButton playButton(BfButton::ANALOG_BUTTON_ARRAY, 8);
+ArrayButton trk1Button(4, 123);
+ArrayButton trk2Button(5, 226);
+ArrayButton trk3Button(6, 325);
+ArrayButton trk4Button(7, 434);
 
-BfButton leftSw(BfButton::ANALOG_BUTTON_ARRAY, 9);
-BfButton rightSw(BfButton::ANALOG_BUTTON_ARRAY, 10);
+ArrayButton leftButton(8, 568);
+ArrayButton rightButton(9, 750);
+ArrayButton playButton(10, 1023);
+
 
 //just easier to loop through all buttons
 BfButton* encoderButtons[] = {&aSw, &bSw, &cSw, &dSw};
-BfButton* arrayButtons[] = {&trk1Button, &trk2Button, &trk3Button, &trk4Button, &playButton, &leftSw, &rightSw};
 
 const uint16_t voltageLimits[][2] = {};
 const uint16_t voltageMeans[] = {123, 226, 325, 434, 568, 750, 1023};
@@ -49,12 +47,6 @@ uint8_t buttonIndex(BfButton* button)
     if (encoderButtons[idx] == button)
       return idx;
     ++idx;
-  }
-  idx = 0;
-  while (idx < 7)
-  {
-    if (arrayButtons[idx] == button)
-      return idx + 4;
   }
   return 0;
 }
@@ -119,12 +111,10 @@ void checkArrayButtons()
   else if (button == lastButton && now - lastPressed[button] >= DEBOUNCE_MS)
   {
     //debounce period is over, send the button signal and reset
-    sendControlSignal({false, false, (byte)button});
+    sendControlSignal({false, false, (uint8_t)button});
     lastButton = -1;
   }
 }
-
-
 
 void setup()
 {
