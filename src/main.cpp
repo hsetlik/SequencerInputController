@@ -20,31 +20,41 @@ BfButton bSw(BfButton::STANDALONE_DIGITAL, BSW, true, LOW);
 BfButton cSw(BfButton::STANDALONE_DIGITAL, CSW, true, LOW);
 BfButton dSw(BfButton::STANDALONE_DIGITAL, DSW, true, LOW);
 
+//BfButtonManager manager(A7, 7);
 //left/right menu buttons
-BfButton leftSw(BfButton::STANDALONE_DIGITAL, LBUTTON, true, LOW);
-BfButton rightSw(BfButton::STANDALONE_DIGITAL, RBUTTON, true, LOW);
-
 //Track select buttons
-BfButton trk1Button(BfButton::STANDALONE_DIGITAL, TRK1, true, LOW);
-BfButton trk2Button(BfButton::STANDALONE_DIGITAL, TRK2, true, LOW);
-BfButton trk3Button(BfButton::STANDALONE_DIGITAL, TRK3, true, LOW);
-BfButton trk4Button(BfButton::STANDALONE_DIGITAL, TRK4, true, LOW);
+BfButton trk1Button(BfButton::ANALOG_BUTTON_ARRAY, 4);
+BfButton trk2Button(BfButton::ANALOG_BUTTON_ARRAY, 5);
+BfButton trk3Button(BfButton::ANALOG_BUTTON_ARRAY, 6);
+BfButton trk4Button(BfButton::ANALOG_BUTTON_ARRAY, 7);
 
+BfButton playButton(BfButton::ANALOG_BUTTON_ARRAY, 8);
 
-BfButton playButton(BfButton::STANDALONE_DIGITAL, PLAY, true, LOW);
+BfButton leftSw(BfButton::ANALOG_BUTTON_ARRAY, 9);
+BfButton rightSw(BfButton::ANALOG_BUTTON_ARRAY, 10);
 
 //just easier to loop through all buttons
-BfButton* allButtons[] = {&aSw, &bSw, &cSw, &dSw, &leftSw, &rightSw, &trk1Button, &trk2Button, &trk3Button, &trk4Button, &playButton};
+BfButton* encoderButtons[] = {&aSw, &bSw, &cSw, &dSw};
+BfButton* arrayButtons[] = {&trk1Button, &trk2Button, &trk3Button, &trk4Button, &playButton, &leftSw, &rightSw};
+
+const uint16_t voltageLimits[][2] = {};
+const uint16_t voltageMeans[] = {123, 226, 325, 434, 568, 750, 1023};
 //===========BUTTON HANDLING=====================================
 
 uint8_t buttonIndex(BfButton* button)
 {
   uint8_t idx = 0;
-  while(idx < 11)
+  while(idx < 4)
   {
-    if (allButtons[idx] == button)
+    if (encoderButtons[idx] == button)
       return idx;
     ++idx;
+  }
+  idx = 0;
+  while (idx < 7)
+  {
+    if (arrayButtons[idx] == button)
+      return idx + 4;
   }
   return 0;
 }
@@ -69,28 +79,60 @@ void buttonPressed (BfButton* btn, BfButton::press_pattern_t pattern)
   sendControlSignal(sig);
 }
 
+uint8_t buttonForVoltage(uint16_t v)
+{
+  for(uint8_t i = 0; i < 7; ++i)
+  {
+    auto vMax = voltageMeans[i] + 50;
+    auto vMin = vMax - 100;
+    if (vMax > v && vMin <= v)
+    {
+      return i + 4;
+    }
+  }
+  return 0;
+}
+
+int lastButton = -1;
+unsigned long lastPressedAt = 0;
+void checkArrayButtons()
+{
+  auto vButton = analogRead(A7);
+  auto idx = buttonForVoltage(vButton);
+  auto now = millis();
+  if (vButton > 100 && lastButton != idx)
+  {
+    lastPressedAt = now;
+    //Serial.println(vButton);
+    sendControlSignal({false, false, idx});
+    lastButton = idx;
+  }
+  if (now - lastPressedAt > 600)
+  {
+    lastButton = -1;
+  }
+}
+
 
 
 void setup()
 {
-  pinMode(A0, INPUT_PULLUP);
-  pinMode(A1, INPUT_PULLUP);
-  pinMode(A2, INPUT_PULLUP);
-  pinMode(A3, INPUT_PULLUP);
-  pinMode(A6, INPUT_PULLUP);
-  pinMode(A7, INPUT_PULLUP);
-  // encoder buttons
   Serial.begin(9600);
-  while (! Serial);
- 
- for(uint8_t i; i < 11; ++i)
- {
-   allButtons[i]->onPress(buttonPressed).onDoublePress(buttonPressed).onPressFor(buttonPressed, 1000);
- } 
- Wire.begin(8);
- Serial.println("I2C connection established");
-
- 
+  while (!Serial);
+  for (uint8_t b = 0; b < 7; ++b)
+  {
+    //arrayButtons[b]->onPress(buttonPressed).onDoublePress(buttonPressed).onPressFor(buttonPressed, 1000);
+    //manager.addButton(arrayButtons[b], voltageLimits[b][0], voltageLimits[b][1]);
+  }
+  // manager.begin();
+  Serial.println("Button manager started");
+  for (uint8_t i = 0; i < 4; ++i)
+  {
+    encoderButtons[i]->onPress(buttonPressed).onDoublePress(buttonPressed).onPressFor(buttonPressed, 1000);
+  }
+  Serial.println("Button callabcks attached");
+  Wire.begin(8);
+  Serial.println("I2C connection established");
 } // setup()
 
 //state of the encoders
@@ -104,9 +146,11 @@ int* positions[] = {&posA, &posB, &posC, &posD};
 // Read the current position of the encoder and print out when changed.
 void loop()
 {
-  for(uint8_t b = 0; b < 11; ++b)
+  //manager.loop();
+  checkArrayButtons();
+  for(uint8_t b = 0; b < 4; ++b)
   {
-    allButtons[b]->read();
+    encoderButtons[b]->read();
   }
   for(uint8_t i = 0; i < 4; ++i)
   {
