@@ -79,8 +79,10 @@ void buttonPressed (BfButton* btn, BfButton::press_pattern_t pattern)
   sendControlSignal(sig);
 }
 
-uint8_t buttonForVoltage(uint16_t v)
+int buttonForVoltage(uint16_t v)
 {
+  if (v < 100)
+    return -1;
   for(uint8_t i = 0; i < 7; ++i)
   {
     auto vMax = voltageMeans[i] + 50;
@@ -90,25 +92,34 @@ uint8_t buttonForVoltage(uint16_t v)
       return i + 4;
     }
   }
-  return 0;
+  return -1;
 }
 
+
+#define DEBOUNCE_MS 200
+
+long lastPressed[7] = {0};
+
 int lastButton = -1;
-unsigned long lastPressedAt = 0;
+
 void checkArrayButtons()
 {
-  auto vButton = analogRead(A7);
-  auto idx = buttonForVoltage(vButton);
   auto now = millis();
-  if (vButton > 100 && lastButton != idx)
+  auto voltage = analogRead(A7);
+  auto button = buttonForVoltage(voltage);
+  if (button == -1)
+    return;
+  //if lastButton is -1,
+  if (lastButton == -1)
   {
-    lastPressedAt = now;
-    //Serial.println(vButton);
-    sendControlSignal({false, false, idx});
-    lastButton = idx;
+    //start the debounce period
+    lastPressed[button] = now;
+    lastButton = button;
   }
-  if (now - lastPressedAt > 600)
+  else if (button == lastButton && now - lastPressed[button] >= DEBOUNCE_MS)
   {
+    //debounce period is over, send the button signal and reset
+    sendControlSignal({false, false, (byte)button});
     lastButton = -1;
   }
 }
